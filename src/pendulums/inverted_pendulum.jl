@@ -19,7 +19,7 @@ struct InvertedPendulumData
         new(9.81, 1.0, 0.1, 1.1, 0.5, 0.05, 10.0, 0.02, "euler", 12 * 2 * pi / 360, 2.4)
 end
 
-function step!(state::Vector{Float64}, action, p::InvertedPendulumData)
+function step(state, action, p::InvertedPendulumData)
     x, x_dot, theta, theta_dot = state
     force = if action == 1
         p.force_mag
@@ -48,10 +48,10 @@ function step!(state::Vector{Float64}, action, p::InvertedPendulumData)
         theta = theta + p.tau * theta_dot
     end
 
-    state .= [x, x_dot, theta, theta_dot]
+    SA[x, x_dot, theta, theta_dot]
 end
 
-function is_state_terminated(state::Vector{Float64}, p::InvertedPendulumData)
+function is_state_terminated(state, p::InvertedPendulumData)
     x = state[1]
     theta = state[3]
     (
@@ -109,20 +109,22 @@ gym.make('CartPole-v1')
 No additional arguments are currently supported.
 """
 mutable struct InvertedPendulumEnv <: AbstractEnvironment
-    state::Union{Nothing,Vector{Float64}}
+    state::Union{Nothing,SVector{4, Float64}}
 
     # This one may be changing
     steps_beyond_terminated::Union{Nothing,Int}
 
     data::InvertedPendulumData
-    action_space::Any
+    action_space::SVector{2,Int}
 
     InvertedPendulumEnv() = new(nothing, nothing, InvertedPendulumData(), (0, 1))
 end
 
+action_space(env::InvertedPendulumEnv) = env.action_space
+
 function step!(env::InvertedPendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
-    step!(env.state, action, env.data)
+    env.state = step(env.state, action, env.data)
 
     terminated = is_state_terminated(env.state, env.data)
 
@@ -146,7 +148,7 @@ function step!(env::InvertedPendulumEnv, action::Int)
         reward = 0.0
     end
 
-    return (copy(env.state), reward, terminated, nothing)
+    return (env.state, reward, terminated, nothing)
 end
 
 function reset!(env::InvertedPendulumEnv, seed::Union{Nothing,Int} = nothing)
@@ -156,15 +158,15 @@ function reset!(env::InvertedPendulumEnv, seed::Union{Nothing,Int} = nothing)
     low, high = -0.05, 0.05
     env.state = rand(Float64, (4,)) .* (high - low) .+ low
     env.steps_beyond_terminated = nothing
-    return copy(env.state)
+    return env.state
 end
 
 function state(env::InvertedPendulumEnv)
-    return copy(env.state)
+    return env.state
 end
 
 function setstate!(env::InvertedPendulumEnv, state)
-    env.state .= state
+    env.state = state
     env.steps_beyond_terminated = nothing
     nothing
 end
