@@ -108,35 +108,37 @@ gym.make('CartPole-v1')
 ```
 No additional arguments are currently supported.
 """
-mutable struct InvertedPendulumEnv <: AbstractEnvironment
-    state::Union{Nothing,SVector{4, Float64}}
+mutable struct InvertedPendulumState
+    y::SVector{4,Float64}
+    steps_beyond_terminated::Int
+end
 
-    # This one may be changing
-    steps_beyond_terminated::Union{Nothing,Int}
+mutable struct InvertedPendulumEnv <: AbstractEnvironment
+    state::Union{Nothing,InvertedPendulumState}
 
     data::InvertedPendulumData
     action_space::SVector{2,Int}
 
-    InvertedPendulumEnv() = new(nothing, nothing, InvertedPendulumData(), (0, 1))
+    InvertedPendulumEnv() = new(nothing, InvertedPendulumData(), (0, 1))
 end
 
 action_space(env::InvertedPendulumEnv) = env.action_space
 
 function step!(env::InvertedPendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
-    env.state = step(env.state, action, env.data)
+    env.state.y = step(env.state.y, action, env.data)
 
-    terminated = is_state_terminated(env.state, env.data)
+    terminated = is_state_terminated(env.state.y, env.data)
 
     reward = 0.0
     if !terminated
         reward = 1.0
     elseif isnothing(env.steps_beyond_terminated)
         # Pole just fell!
-        env.steps_beyond_terminated = 0
+        env.state.steps_beyond_terminated = 0
         reward = 1.0
     else
-        if env.steps_beyond_terminated == 0
+        if env.state.steps_beyond_terminated == 0
             @warn (
                 "You are calling 'step()' even though this " *
                 "environment has already returned terminated = True. You " *
@@ -144,11 +146,11 @@ function step!(env::InvertedPendulumEnv, action::Int)
                 "True' -- any further steps are undefined behavior."
             )
         end
-        env.steps_beyond_terminated += 1
+        env.state.steps_beyond_terminated += 1
         reward = 0.0
     end
 
-    return (env.state, reward, terminated, nothing)
+    return (env.state.y, reward, terminated, nothing)
 end
 
 function reset!(env::InvertedPendulumEnv, seed::Union{Nothing,Int} = nothing)
@@ -156,9 +158,8 @@ function reset!(env::InvertedPendulumEnv, seed::Union{Nothing,Int} = nothing)
         Random.seed!(seed)
     end
     low, high = -0.05, 0.05
-    env.state = rand(Float64, (4,)) .* (high - low) .+ low
-    env.steps_beyond_terminated = nothing
-    return env.state
+    env.state = InvertedPendulumState(rand(Float64, (4,)) .* (high - low) .+ low, -1)
+    return env.state.y
 end
 
 function state(env::InvertedPendulumEnv)
@@ -167,6 +168,9 @@ end
 
 function setstate!(env::InvertedPendulumEnv, state)
     env.state = state
-    env.steps_beyond_terminated = nothing
     nothing
+end
+
+function isdone(state::InvertedPendulumState)
+    return state.steps_beyond_terminated >= 0
 end

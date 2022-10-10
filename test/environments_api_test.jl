@@ -8,20 +8,24 @@
             @test_nowarn reset!(e, 12785)
             @test_nowarn reset!(e)
             as = @test_nowarn action_space(e)
-            @test_nowarn step!(e, as[1])
             st = @test_nowarn state(e)
+            @test_nowarn step!(e, as[1])
             @test_nowarn setstate!(e, st)
+            @test_nowarn isdone(st)
+            @test !isdone(st)
         end
 
         @testset "Check if state management works as expected for $env_name" begin
             e = env()
-            st0 = reset!(e)
+            reset!(e)
+            st0 = state(e)
             reset!(e)
             st1 = state(e)
-            @test st0 ≉ st1
+            @test st0.y ≉ st1.y
+            @test st0.steps_beyond_terminated === st1.steps_beyond_terminated
             setstate!(e, st0)
             st2 = state(e)
-            @test st0 ≈ st2
+            @test st0.y ≈ st2.y
         end
     end
 end
