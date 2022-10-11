@@ -233,6 +233,6 @@ function render!(env::InvertedPendulumEnv)
     end
     # cart and pole observables
     env.screen[1][], env.screen[2][] = xycoords(env.state.y, env.data)
-    sleep(1/30)
+    sleep(0.01)
     nothing
 end
