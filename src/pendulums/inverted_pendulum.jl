@@ -207,7 +207,7 @@ function xycoords(state, ipd::InvertedPendulumData)
     Point2f(x + ipd.length, 0.04),
     Point2f(x + ipd.length, -0.04)]
     x2, y2 = 2ipd.length * [-1, 1] .* sincos(θ)
-    pole = [Point2f(x, 0.0), Point2f(x2, y2)]
+    pole = [Point2f(x, 0.0), Point2f(x + x2, y2)]
     return cart, pole
 end
 
@@ -233,6 +233,6 @@ function render!(env::InvertedPendulumEnv)
     end
     # cart and pole observables
     env.screen[1][], env.screen[2][] = xycoords(env.state.y, env.data)
-    sleep(0.02)
+    sleep(1/30)
     nothing
 end
