@@ -1,10 +1,11 @@
 module Environments
 using Random
 using StaticArrays
+using GLMakie
 # Write your package code here.
 include("abstract_environment.jl")
 export AbstractEnvironment
-export reset!, step!, state, setstate!, action_space, isdone
+export reset!, step!, state, setstate!, action_space, isdone, render!
 include("pendulums/inverted_pendulum.jl")
 export InvertedPendulumEnv
 
