@@ -62,6 +62,8 @@ function is_state_terminated(state, p::InvertedPendulumData)
     )
 end
 
+const inverted_pendulum_max_steps = 200
+
 """
 ### Description
 This environment corresponds to the version of the cart-pole problem described by Barto, Sutton, and Anderson in
@@ -111,6 +113,17 @@ No additional arguments are currently supported.
 mutable struct InvertedPendulumState
     y::SVector{4,Float64}
     steps_beyond_terminated::Int
+    steps::Int
+end
+InvertedPendulumState(y::AbstractVector) = InvertedPendulumState(y, -1, 0)
+
+import Base: copy, copy!
+copy(ips::InvertedPendulumState) = InvertedPendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
+function copy!(dst::InvertedPendulumState, src::InvertedPendulumState)
+    dst.y = src.y
+    dst.steps_beyond_terminated = src.steps_beyond_terminated
+    dst.steps = src.steps
+    dst
 end
 
 mutable struct InvertedPendulumEnv <: AbstractEnvironment
@@ -127,18 +140,20 @@ action_space(env::InvertedPendulumEnv) = env.action_space
 function step!(env::InvertedPendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
     env.state.y = step(env.state.y, action, env.data)
+    env.state.steps += 1
 
-    terminated = is_state_terminated(env.state.y, env.data)
+    terminated = is_state_terminated(env.state.y, env.data) || env.state.steps >= inverted_pendulum_max_steps
 
     reward = 0.0
     if !terminated
         reward = 1.0
-    elseif isnothing(env.steps_beyond_terminated)
+    elseif env.state.steps_beyond_terminated < 0
         # Pole just fell!
         env.state.steps_beyond_terminated = 0
         reward = 1.0
     else
         if env.state.steps_beyond_terminated == 0
+            @assert false
             @warn (
                 "You are calling 'step()' even though this " *
                 "environment has already returned terminated = True. You " *
@@ -158,19 +173,27 @@ function reset!(env::InvertedPendulumEnv, seed::Union{Nothing,Int} = nothing)
         Random.seed!(seed)
     end
     low, high = -0.05, 0.05
-    env.state = InvertedPendulumState(rand(Float64, (4,)) .* (high - low) .+ low, -1)
+    env.state = InvertedPendulumState(rand(Float64, (4,)) .* (high - low) .+ low)
     return env.state.y
 end
 
 function state(env::InvertedPendulumEnv)
-    return env.state
+    if isnothing(env.state)
+        nothing
+    else
+       copy(env.state)
+    end
 end
 
 function setstate!(env::InvertedPendulumEnv, state)
-    env.state = state
+    env.state = copy(state)
     nothing
 end
 
 function isdone(state::InvertedPendulumState)
-    return state.steps_beyond_terminated >= 0
+    return state.steps_beyond_terminated >= 0 || state.steps >= inverted_pendulum_max_steps
 end
+
+# function render!(env::InvertedPendulumEnv)
+
+# end
