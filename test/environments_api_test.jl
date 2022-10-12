@@ -1,5 +1,8 @@
 @testset "Check is environments follow standard API" begin
-    test_environments = Dict("InvertedPendulumEnv" => InvertedPendulumEnv)
+    test_environments = Dict(
+        "InvertedPendulumEnv" => InvertedPendulumEnv,
+        "InvertedDoublePendulumEnv" => InvertedDoublePendulumEnv,
+    )
 
     for (env_name, env) in test_environments
         @testset "Check basic API for $env_name" begin

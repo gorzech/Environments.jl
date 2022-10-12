@@ -8,5 +8,7 @@ export AbstractEnvironment
 export reset!, step!, state, setstate!, action_space, isdone, render!
 include("pendulums/inverted_pendulum.jl")
 export InvertedPendulumEnv
+include("pendulums/inverted_double_pendulum.jl")
+export InvertedDoublePendulumEnv
 
 end
