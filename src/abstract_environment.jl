@@ -6,3 +6,16 @@ function close!(env::AbstractEnvironment)
 end
 
 action_space(env::AbstractEnvironment) = env.action_space
+
+function state(env::AbstractEnvironment)
+    if isnothing(env.state)
+        nothing
+    else
+        copy(env.state)
+    end
+end
+
+function setstate!(env::AbstractEnvironment, state)
+    env.state = copy(state)
+    nothing
+end
