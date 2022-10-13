@@ -1,25 +1,22 @@
 # Code is more or less after the cartpole:
 # https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
-struct InvertedPendulumData
-    gravity::Float64
-    masscart::Float64
-    masspole::Float64
-    total_mass::Float64
-    length::Float64 # actually half the pole's length
-    polemass_length::Float64
-    force_mag::Float64
-    tau::Float64  # seconds between state updates
-    kinematics_integrator::String
+InvertedPendulumState = PendulumState{4}
 
-    # Angle at which to fail the episode
-    theta_threshold_radians::Float64
-    x_threshold::Float64
+InvertedPendulumData() = PendulumData(
+    9.81,
+    1.0,
+    0.1,
+    1.1,
+    0.5,
+    0.05,
+    10.0,
+    0.02,
+    "euler",
+    12 * 2 * pi / 360,
+    2.4,
+)
 
-    InvertedPendulumData() =
-        new(9.81, 1.0, 0.1, 1.1, 0.5, 0.05, 10.0, 0.02, "euler", 12 * 2 * pi / 360, 2.4)
-end
-
-function step(state, action, p::InvertedPendulumData)
+function step(state::SVector{4,Float64}, action, p::PendulumData)
     x, x_dot, theta, theta_dot = state
     force = if action == 1
         p.force_mag
@@ -50,20 +47,6 @@ function step(state, action, p::InvertedPendulumData)
 
     SA[x, x_dot, theta, theta_dot]
 end
-
-function is_state_terminated(state, p::InvertedPendulumData)
-    x = state[1]
-    theta = state[3]
-    (
-        x < -p.x_threshold ||
-        x > p.x_threshold ||
-        theta < -p.theta_threshold_radians ||
-        theta > p.theta_threshold_radians
-    )
-end
-
-const inverted_pendulum_max_steps = 200
-
 
 # ### Description
 # This environment corresponds to the version of the cart-pole problem described by Barto, Sutton, and Anderson in
@@ -110,77 +93,9 @@ const inverted_pendulum_max_steps = 200
 # ```
 # No additional arguments are currently supported.
 
-mutable struct InvertedPendulumState
-    y::SVector{4,Float64}
-    steps_beyond_terminated::Int
-    steps::Int
-end
-InvertedPendulumState(y::AbstractVector) = InvertedPendulumState(y, -1, 0)
+InvertedPendulumEnv = PendulumEnv{4} # 4 is state size
 
-import Base: copy, copy!
-copy(ips::InvertedPendulumState) =
-    InvertedPendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
-function copy!(dst::InvertedPendulumState, src::InvertedPendulumState)
-    dst.y = src.y
-    dst.steps_beyond_terminated = src.steps_beyond_terminated
-    dst.steps = src.steps
-    dst
-end
-
-mutable struct InvertedPendulumEnv <: AbstractEnvironment
-    state::Union{Nothing,InvertedPendulumState}
-
-    data::InvertedPendulumData
-    action_space::SVector{2,Int}
-
-    # render stuff
-    screen::Union{Nothing,Vector{Observable{Vector{Point{2,Float32}}}}}
-
-    InvertedPendulumEnv() = new(nothing, InvertedPendulumData(), (0, 1), nothing)
-end
-
-action_space(env::InvertedPendulumEnv) = env.action_space
-
-function step!(env::InvertedPendulumEnv, action::Int)
-    @assert !isnothing(env.state) "Call reset before using step function."
-    env.state.y = step(env.state.y, action, env.data)
-    env.state.steps += 1
-
-    terminated =
-        is_state_terminated(env.state.y, env.data) ||
-        env.state.steps >= inverted_pendulum_max_steps
-
-    reward = 0.0
-    if !terminated
-        reward = 1.0
-    elseif env.state.steps_beyond_terminated < 0
-        # Pole just fell!
-        env.state.steps_beyond_terminated = 0
-        reward = 1.0
-    else
-        if env.state.steps_beyond_terminated == 0
-            @warn (
-                "You are calling 'step()' even though this " *
-                "environment has already returned terminated = True. You " *
-                "should always call 'reset()' once you receive 'terminated = " *
-                "True' -- any further steps are undefined behavior."
-            )
-        end
-        env.state.steps_beyond_terminated += 1
-        reward = 0.0
-    end
-
-    return (env.state.y, reward, terminated, nothing)
-end
-
-function reset!(env::InvertedPendulumEnv, seed::Union{Nothing,Int} = nothing)
-    if !isnothing(seed)
-        Random.seed!(seed)
-    end
-    low, high = -0.05, 0.05
-    env.state = InvertedPendulumState(rand(Float64, (4,)) .* (high - low) .+ low)
-    return env.state.y
-end
+PendulumEnv{4}() = PendulumEnv{4}(InvertedPendulumData())
 
 function state(env::InvertedPendulumEnv)
     if isnothing(env.state)
@@ -196,16 +111,18 @@ function setstate!(env::InvertedPendulumEnv, state)
 end
 
 function isdone(state::InvertedPendulumState)
-    return state.steps_beyond_terminated >= 0 || state.steps >= inverted_pendulum_max_steps
+    return state.steps_beyond_terminated >= 0 || state.steps >= pendulum_max_steps
 end
 
-function xycoords(state, ipd::InvertedPendulumData)
+function xycoords(state::InvertedPendulumState, ipd::PendulumData)
     x = state[1]
     θ = state[3]
-    cart = [Point2f(x - ipd.length, -0.04),
-    Point2f(x - ipd.length, 0.04),
-    Point2f(x + ipd.length, 0.04),
-    Point2f(x + ipd.length, -0.04)]
+    cart = [
+        Point2f(x - ipd.length, -0.04),
+        Point2f(x - ipd.length, 0.04),
+        Point2f(x + ipd.length, 0.04),
+        Point2f(x + ipd.length, -0.04),
+    ]
     x2, y2 = 2ipd.length * [-1, 1] .* sincos(θ)
     pole = [Point2f(x, 0.0), Point2f(x + x2, y2)]
     return cart, pole
@@ -218,16 +135,22 @@ function render!(env::InvertedPendulumEnv)
         cart = Observable(c)
         pole = Observable(p)
 
-        fig = Figure(); display(fig)
+        fig = Figure()
+        display(fig)
         ax = Axis(fig[1, 1])
         xlims!(ax, -env.data.x_threshold, env.data.x_threshold)
         ylims!(ax, -0.06, 2.1 * env.data.length)
 
         poly!(ax, cart, color = :grey, strokecolor = :black, strokewidth = 1)
         lines!(ax, pole; linewidth = 12, color = :red)
-        scatter!(ax, pole; marker = :circle, strokewidth = 2, 
+        scatter!(
+            ax,
+            pole;
+            marker = :circle,
+            strokewidth = 2,
             strokecolor = :red,
-            color = :red, markersize = 36
+            color = :red,
+            markersize = 36,
         )
         env.screen = [cart, pole]
     end
