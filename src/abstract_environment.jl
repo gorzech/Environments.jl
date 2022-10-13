@@ -4,3 +4,5 @@ abstract type AbstractEnvironment end
 function close!(env::AbstractEnvironment)
     nothing
 end
+
+action_space(env::AbstractEnvironment) = env.action_space

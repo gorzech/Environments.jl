@@ -100,7 +100,7 @@ function integrate_sys_rk4(g, l, m, ml, tau, dt, state, force)
     return SVector{6}(yi)
 end
 
-function step(state::SVector{6, Float64}, action, p::PendulumData)
+function step(state::SVector{6,Float64}, action, p::PendulumData)
     force = if action == 1
         p.force_mag
     else
@@ -118,60 +118,9 @@ function step(state::SVector{6, Float64}, action, p::PendulumData)
     )
 end
 
-mutable struct InvertedDoublePendulumEnv <: AbstractEnvironment
-    state::Union{Nothing,InvertedDoublePendulumState}
+InvertedDoublePendulumEnv = PendulumEnv{6} # 6 is state size
 
-    data::PendulumData
-    action_space::SVector{2,Int}
-
-    # render stuff
-    screen::Union{Nothing,Vector{Observable{Vector{Point{2,Float32}}}}}
-
-    InvertedDoublePendulumEnv() =
-        new(nothing, InvertedDoublePendulumData(), (0, 1), nothing)
-end
-
-action_space(env::InvertedDoublePendulumEnv) = env.action_space
-
-function step!(env::InvertedDoublePendulumEnv, action::Int)
-    @assert !isnothing(env.state) "Call reset before using step function."
-    env.state.y = step(env.state.y, action, env.data)
-    env.state.steps += 1
-
-    terminated =
-        is_state_terminated(env.state.y, env.data) || env.state.steps >= pendulum_max_steps
-
-    reward = 0.0
-    if !terminated
-        reward = 1.0
-    elseif env.state.steps_beyond_terminated < 0
-        # Pole just fell!
-        env.state.steps_beyond_terminated = 0
-        reward = 1.0
-    else
-        if env.state.steps_beyond_terminated == 0
-            @warn (
-                "You are calling 'step()' even though this " *
-                "environment has already returned terminated = True. You " *
-                "should always call 'reset()' once you receive 'terminated = " *
-                "True' -- any further steps are undefined behavior."
-            )
-        end
-        env.state.steps_beyond_terminated += 1
-        reward = 0.0
-    end
-
-    return (env.state.y, reward, terminated, nothing)
-end
-
-function reset!(env::InvertedDoublePendulumEnv, seed::Union{Nothing,Int} = nothing)
-    if !isnothing(seed)
-        Random.seed!(seed)
-    end
-    low, high = -0.05, 0.05
-    env.state = InvertedDoublePendulumState(rand(Float64, (6,)) .* (high - low) .+ low)
-    return env.state.y
-end
+PendulumEnv{6}() = PendulumEnv{6}(InvertedDoublePendulumData())
 
 function state(env::InvertedDoublePendulumEnv)
     if isnothing(env.state)
