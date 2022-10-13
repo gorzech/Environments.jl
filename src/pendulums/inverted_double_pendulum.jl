@@ -1,22 +1,7 @@
-# Code is more or less after the cartpole:
-# https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
-struct InvertedDoublePendulumData
-    gravity::Float64
-    masscart::Float64
-    masspole::Float64
-    total_mass::Float64
-    length::Float64 # actually half the pole's length
-    polemass_length::Float64
-    force_mag::Float64
-    tau::Float64  # seconds between state updates
+InvertedDoublePendulumData() =
+    PendulumData(9.81, 1.0, 0.1, 1.1, 0.5, 0.05, 20.0, 0.02, "rk4", 12 * 2 * pi / 360, 2.4)
 
-    # Angle at which to fail the episode
-    theta_threshold_radians::Float64
-    x_threshold::Float64
-
-    InvertedDoublePendulumData() =
-        new(9.81, 1.0, 0.1, 1.1, 0.5, 0.05, 20.0, 0.02, 12 * 2 * pi / 360, 2.4)
-end
+InvertedDoublePendulumState = PendulumState{6}
 
 function double_inverted(F, a1, a2, a1_t, a2_t, g, l, m, ml)
     t2 = sin(a1)
@@ -103,61 +88,40 @@ function integrate_sys_rk4(g, l, m, ml, tau, dt, state, force)
     end
     yi = @MVector [x, x_t, a1, a1_t, a2, a2_t]
     N_t = tau ÷ dt
-    for _ in 1:N_t
+    for _ = 1:N_t
         k1 = dt * odefun(yi)
         k2 = dt * odefun(yi + 0.5 * k1)
         k3 = dt * odefun(yi + 0.5 * k2)
         k4 = dt * odefun(yi + k3)
 
         # Update next value of y
-        yi += (1.0 / 6.0)*(k1 + 2 * k2 + 2 * k3 + k4)
+        yi += (1.0 / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
     end
     return SVector{6}(yi)
 end
 
-function step(state, action, p::InvertedDoublePendulumData)
+function step(state::SVector{6, Float64}, action, p::PendulumData)
     force = if action == 1
         p.force_mag
     else
         -p.force_mag
     end
-    integrate_sys_rk4(p.gravity, 2p.length, p.masscart, p.masspole, p.tau, p.tau, state, force)
-end
-
-function is_state_terminated(state, p::InvertedDoublePendulumData)
-    x = state[1]
-    thetas = state[3:2:end]
-    (
-        x < -p.x_threshold ||
-        x > p.x_threshold ||
-        any(thetas .< -p.theta_threshold_radians) ||
-        any(thetas .> p.theta_threshold_radians)
+    integrate_sys_rk4(
+        p.gravity,
+        2p.length,
+        p.masscart,
+        p.masspole,
+        p.tau,
+        p.tau,
+        state,
+        force,
     )
-end
-
-const inverted_double_pendulum_max_steps = 200
-
-mutable struct InvertedDoublePendulumState
-    y::SVector{6,Float64}
-    steps_beyond_terminated::Int
-    steps::Int
-end
-InvertedDoublePendulumState(y::AbstractVector) = InvertedDoublePendulumState(y, -1, 0)
-
-import Base: copy, copy!
-copy(ips::InvertedDoublePendulumState) =
-    InvertedDoublePendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
-function copy!(dst::InvertedDoublePendulumState, src::InvertedDoublePendulumState)
-    dst.y = src.y
-    dst.steps_beyond_terminated = src.steps_beyond_terminated
-    dst.steps = src.steps
-    dst
 end
 
 mutable struct InvertedDoublePendulumEnv <: AbstractEnvironment
     state::Union{Nothing,InvertedDoublePendulumState}
 
-    data::InvertedDoublePendulumData
+    data::PendulumData
     action_space::SVector{2,Int}
 
     # render stuff
@@ -175,8 +139,7 @@ function step!(env::InvertedDoublePendulumEnv, action::Int)
     env.state.steps += 1
 
     terminated =
-        is_state_terminated(env.state.y, env.data) ||
-        env.state.steps >= inverted_double_pendulum_max_steps
+        is_state_terminated(env.state.y, env.data) || env.state.steps >= pendulum_max_steps
 
     reward = 0.0
     if !terminated
@@ -224,10 +187,10 @@ function setstate!(env::InvertedDoublePendulumEnv, state)
 end
 
 function isdone(state::InvertedDoublePendulumState)
-    return state.steps_beyond_terminated >= 0 || state.steps >= inverted_double_pendulum_max_steps
+    return state.steps_beyond_terminated >= 0 || state.steps >= pendulum_max_steps
 end
 
-function xycoords(state, ipd::InvertedDoublePendulumData)
+function xycoords(state::InvertedDoublePendulumState, ipd::PendulumData)
     x = state[1]
     θ₁ = state[3]
     θ₂ = state[5]
