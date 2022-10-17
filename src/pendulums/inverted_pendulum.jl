@@ -94,3 +94,4 @@ end
 InvertedPendulumEnv = PendulumEnv{4} # 4 is state size
 
 PendulumEnv{4}() = PendulumEnv{4}(InvertedPendulumData())
+PendulumEnv{4}(opts::PendulumOpts) = PendulumEnv{4}(InvertedPendulumData(), opts)
