@@ -12,8 +12,6 @@ InvertedPendulumData() = PendulumData(
     10.0,
     0.02,
     "euler",
-    12 * 2 * pi / 360,
-    2.4,
 )
 
 function step(state::SVector{4,Float64}, action, p::PendulumData)

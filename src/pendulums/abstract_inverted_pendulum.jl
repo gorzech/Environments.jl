@@ -1,3 +1,12 @@
+struct PendulumOpts
+    cart_displacement_penalty::Float64
+    # Default angle at which to fail the episode
+    theta_threshold_radians::Float64
+    x_threshold::Float64
+    PendulumOpts(; threshold_factor=1.0, cart_displacement_penalty=0.0, theta_threshold_radians=12 * 2 * pi / 360, x_threshold=2.4) =
+        new(cart_displacement_penalty, threshold_factor * theta_threshold_radians, threshold_factor * x_threshold)
+end
+
 struct PendulumData
     gravity::Float64
     masscart::Float64
@@ -8,10 +17,6 @@ struct PendulumData
     force_mag::Float64
     tau::Float64  # seconds between state updates
     kinematics_integrator::String
-
-    # Angle at which to fail the episode
-    theta_threshold_radians::Float64
-    x_threshold::Float64
 end
 
 mutable struct PendulumState{N}
@@ -26,12 +31,13 @@ mutable struct PendulumEnv{N} <: AbstractEnvironment
     state::Union{Nothing,PendulumState{N}}
 
     data::PendulumData
+    opts::PendulumOpts
     action_space::SVector{2,Int}
     # render stuff
     screen::Union{Nothing,Vector{Observable{Vector{Point{2,Float32}}}}}
 end
-PendulumEnv{N}(data::PendulumData) where {N} =
-    PendulumEnv{N}(nothing, data, (0, 1), nothing)
+PendulumEnv{N}(data::PendulumData, opts::PendulumOpts=PendulumOpts()) where {N} =
+    PendulumEnv{N}(nothing, data, opts, (0, 1), nothing)
 
 import Base: copy
 copy(ips::PendulumState) = PendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
@@ -41,16 +47,18 @@ pendulum_env_state_size(::PendulumState{N}) where {N} = N
 
 const pendulum_max_steps = 200
 
-function is_state_terminated(state, pendulum_data)
+function is_state_terminated(state, pendulum_opts)
     x = state[1]
     thetas = state[3:2:end]
     (
-        x < -pendulum_data.x_threshold ||
-        x > pendulum_data.x_threshold ||
-        any(thetas .< -pendulum_data.theta_threshold_radians) ||
-        any(thetas .> pendulum_data.theta_threshold_radians)
+        x < -pendulum_opts.x_threshold ||
+        x > pendulum_opts.x_threshold ||
+        any(thetas .< -pendulum_opts.theta_threshold_radians) ||
+        any(thetas .> pendulum_opts.theta_threshold_radians)
     )
 end
+
+mean(y) = sum(y) / length(y)
 
 function step!(env::PendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
@@ -58,15 +66,15 @@ function step!(env::PendulumEnv, action::Int)
     env.state.steps += 1
 
     terminated =
-        is_state_terminated(env.state.y, env.data) || env.state.steps >= pendulum_max_steps
+        is_state_terminated(env.state.y, env.opts) || env.state.steps >= pendulum_max_steps
 
-    reward = 0.0
+    reward = -env.opts.cart_displacement_penalty * abs(env.state.y[1]) / env.opts.x_threshold
     if !terminated
-        reward = 1.0
+        reward += 1.0
     elseif env.state.steps_beyond_terminated < 0
         # Pole just fell!
         env.state.steps_beyond_terminated = 0
-        reward = 1.0
+        reward += 1.0
     else
         if env.state.steps_beyond_terminated == 0
             @warn (
@@ -83,7 +91,7 @@ function step!(env::PendulumEnv, action::Int)
     return (env.state.y, reward, terminated, nothing)
 end
 
-function reset!(env::PendulumEnv, seed::Union{Nothing,Int} = nothing)
+function reset!(env::PendulumEnv, seed::Union{Nothing,Int}=nothing)
     if !isnothing(seed)
         Random.seed!(seed)
     end
@@ -126,20 +134,20 @@ function render!(env::PendulumEnv)
         fig = Figure()
         display(fig)
         ax = Axis(fig[1, 1])
-        xlims!(ax, -env.data.x_threshold, env.data.x_threshold)
+        xlims!(ax, -env.opts.x_threshold, env.opts.x_threshold)
         ylims!(ax, -0.06, (pendulum_env_state_size(env) - 2 + 0.1) * env.data.length)
         ax.aspect = DataAspect()
 
-        poly!(ax, cart, color = :grey, strokecolor = :black, strokewidth = 1)
-        lines!(ax, pole; linewidth = 12, color = :red)
+        poly!(ax, cart, color=:grey, strokecolor=:black, strokewidth=1)
+        lines!(ax, pole; linewidth=12, color=:red)
         scatter!(
             ax,
             pole;
-            marker = :circle,
-            strokewidth = 2,
-            strokecolor = :red,
-            color = :red,
-            markersize = 36,
+            marker=:circle,
+            strokewidth=2,
+            strokecolor=:red,
+            color=:red,
+            markersize=36
         )
         env.screen = [cart, pole]
     end
