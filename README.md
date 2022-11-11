@@ -41,3 +41,6 @@ Method 4 uses *GLMakie.jl* for animating the pendulum.
 
 Method 5, `isdone`, is useful in connection with the environmental state, not the environment itself. The reason for this is the support of the state management useful for MCTS application. This support is realized with methods 6 and 7: `state` to get the current environment state, and `setstate!` to restore the saved state.
 
+## Acknowledgments
+
+The inverted pendulum is directly inspired by the [Cart Pole](https://www.gymlibrary.dev/environments/classic_control/cart_pole/) environment from OpenAI Gym. It is rewritten version of it with appropriate adjustments. Therefore, most of the parameters are the same as in the original. 
