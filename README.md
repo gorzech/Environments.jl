@@ -10,10 +10,6 @@ There are two environments available currently. One is a standard cart pole (sin
 
 There is a plan to make this package compatible with *ReinforcementLearningEnvironment.jl* as shown here [How to write custom environment?](https://juliareinforcementlearning.org/docs/How_to_write_a_customized_environment/).
 
-### Note about *GLMakie.jl*
-
-For visualization of the environment *GLMakie.jl* is used. There is a plan to remove it from the project. The reason is that direct dependency on GLMakie makes it harder to run on headless computers. 
-
 ## Environment classes
 
 Currently, two environments are available:
@@ -37,7 +33,7 @@ Currently, the project uses a custom interface. In total, seven methods are avai
 
 Methods 1-3 are quite standard, however, they are incomplete for general use with general reinforcement learning methods. At least the `state_space` is missing. 
 
-Method 4 uses *GLMakie.jl* for animating the pendulum. 
+Method 4 is not implemented in this package. For Pendulum visualization, please use this package together with *EnvironmentsRender.jl*. 
 
 Method 5, `isdone`, is useful in connection with the environmental state, not the environment itself. The reason for this is the support of the state management useful for MCTS application. This support is realized with methods 6 and 7: `state` to get the current environment state, and `setstate!` to restore the saved state.
 

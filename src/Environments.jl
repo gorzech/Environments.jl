@@ -1,7 +1,6 @@
 module Environments
 using Random
 using StaticArrays
-using GLMakie
 # Write your package code here.
 include("abstract_environment.jl")
 export AbstractEnvironment

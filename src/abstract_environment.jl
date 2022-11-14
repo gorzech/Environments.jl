@@ -19,3 +19,7 @@ function setstate!(env::AbstractEnvironment, state)
     env.state = copy(state)
     nothing
 end
+
+function render!(::AbstractEnvironment)
+    nothing
+end
