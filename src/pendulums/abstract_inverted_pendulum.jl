@@ -3,8 +3,9 @@ struct PendulumOpts
     # Default angle at which to fail the episode
     theta_threshold_radians::Float64
     x_threshold::Float64
-    PendulumOpts(; threshold_factor=1.0, cart_displacement_penalty=0.0, theta_threshold_radians=12 * 2 * pi / 360, x_threshold=2.4) =
-        new(cart_displacement_penalty, threshold_factor * theta_threshold_radians, threshold_factor * x_threshold)
+    max_steps::Int
+    PendulumOpts(; threshold_factor=1.0, cart_displacement_penalty=0.0, theta_threshold_radians=12 * 2 * pi / 360, x_threshold=2.4, max_steps=200) =
+        new(cart_displacement_penalty, threshold_factor * theta_threshold_radians, threshold_factor * x_threshold, max_steps)
 end
 
 struct PendulumData
@@ -45,8 +46,6 @@ copy(ips::PendulumState) = PendulumState(ips.y, ips.steps_beyond_terminated, ips
 pendulum_env_state_size(::PendulumEnv{N}) where {N} = N
 pendulum_env_state_size(::PendulumState{N}) where {N} = N
 
-const pendulum_max_steps = 200
-
 function is_state_terminated(state, pendulum_opts)
     x = state[1]
     thetas = state[3:2:end]
@@ -66,7 +65,7 @@ function step!(env::PendulumEnv, action::Int)
     env.state.steps += 1
 
     terminated =
-        is_state_terminated(env.state.y, env.opts) || env.state.steps >= pendulum_max_steps
+        is_state_terminated(env.state.y, env.opts) || env.state.steps >= env.opts.max_steps
 
     reward = -env.opts.cart_displacement_penalty * abs(env.state.y[1]) / env.opts.x_threshold
     if !terminated
@@ -101,6 +100,6 @@ function reset!(env::PendulumEnv, seed::Union{Nothing,Int}=nothing)
     return env.state.y
 end
 
-function isdone(state::PendulumState)
-    return state.steps_beyond_terminated >= 0 || state.steps >= pendulum_max_steps
+function isdone(env::PendulumEnv, state::PendulumState)
+    return state.steps_beyond_terminated >= 0 || state.steps >= env.opts.max_steps
 end

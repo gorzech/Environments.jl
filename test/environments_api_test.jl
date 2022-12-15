@@ -14,8 +14,8 @@
             st = @test_nowarn state(e)
             @test_nowarn step!(e, as[1])
             @test_nowarn setstate!(e, st)
-            @test_nowarn isdone(st)
-            @test !isdone(st)
+            @test_nowarn isdone(e, st)
+            @test !isdone(e, st)
         end
 
         @testset "Check if state management works as expected for $env_name" begin
