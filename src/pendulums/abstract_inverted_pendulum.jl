@@ -59,6 +59,10 @@ end
 
 mean(y) = sum(y) / length(y)
 
+function reward(env::PendulumEnv) 
+    1.0 - env.opts.cart_displacement_penalty * abs(env.state.y[1]) / env.opts.x_threshold
+end
+
 function step!(env::PendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
     env.state.y = step(env.state.y, action, env.data)
@@ -67,13 +71,13 @@ function step!(env::PendulumEnv, action::Int)
     terminated =
         is_state_terminated(env.state.y, env.opts) || env.state.steps >= env.opts.max_steps
 
-    reward = -env.opts.cart_displacement_penalty * abs(env.state.y[1]) / env.opts.x_threshold
+    _reward = 0.0
     if !terminated
-        reward += 1.0
+        _reward = reward(env)
     elseif env.state.steps_beyond_terminated < 0
         # Pole just fell!
         env.state.steps_beyond_terminated = 0
-        reward += 1.0
+        _reward = reward(env)
     else
         if env.state.steps_beyond_terminated == 0
             @warn (
@@ -84,10 +88,10 @@ function step!(env::PendulumEnv, action::Int)
             )
         end
         env.state.steps_beyond_terminated += 1
-        reward = 0.0
+        _reward = 0.0
     end
 
-    return (env.state.y, reward, terminated, nothing)
+    return (env.state.y, _reward, terminated, nothing)
 end
 
 function reset!(env::PendulumEnv, seed::Union{Nothing,Int}=nothing)
