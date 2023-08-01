@@ -28,6 +28,9 @@ end
 
 PendulumState{N}(y::AbstractVector) where {N} = PendulumState{N}(y, -1, 0)
 
+import Base: copy
+copy(ips::PendulumState) = PendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
+
 mutable struct PendulumEnv{N} <: AbstractEnvironment
     state::Union{Nothing,PendulumState{N}}
 
@@ -37,11 +40,9 @@ mutable struct PendulumEnv{N} <: AbstractEnvironment
     # render stuff
     screen #::Union{Nothing,Vector{Observable{Vector{Point{2,Float32}}}}}
 end
+
 PendulumEnv{N}(data::PendulumData, opts::PendulumOpts=PendulumOpts()) where {N} =
     PendulumEnv{N}(nothing, data, opts, (0, 1), nothing)
-
-import Base: copy
-copy(ips::PendulumState) = PendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
 
 pendulum_env_state_size(::PendulumEnv{N}) where {N} = N
 pendulum_env_state_size(::PendulumState{N}) where {N} = N
