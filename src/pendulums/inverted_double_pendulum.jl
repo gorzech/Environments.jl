@@ -37,7 +37,7 @@ function step(state::SVector{6,Float64}, force, p::PendulumData)
     )
 end
 
-InvertedDoublePendulumEnv = PendulumEnv{6} # 6 is state size
+InvertedDoublePendulumEnv = PendulumEnv{InvertedDoublePendulumState} # 6 is state size
 
-PendulumEnv{6}() = PendulumEnv{6}(InvertedDoublePendulumData())
-PendulumEnv{6}(opts::PendulumOpts) = PendulumEnv{6}(InvertedPendulumData(), opts)
+PendulumEnv{InvertedDoublePendulumState}() = InvertedDoublePendulumEnv(InvertedDoublePendulumData())
+PendulumEnv{InvertedDoublePendulumState}(opts::PendulumOpts) = InvertedDoublePendulumEnv(InvertedPendulumData(), opts)

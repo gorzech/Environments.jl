@@ -28,24 +28,27 @@ end
 
 PendulumState{N}(y::AbstractVector) where {N} = PendulumState{N}(y, -1, 0)
 
+pendulum_state_size(::PendulumState{NState}) where {NState} = NState
+pendulum_state_size(::Type{<:PendulumState{NState}}) where {NState} = NState
+
 import Base: copy
 copy(ips::PendulumState) = PendulumState(ips.y, ips.steps_beyond_terminated, ips.steps)
 
-mutable struct PendulumEnv{N} <: AbstractEnvironment
-    state::Union{Nothing,PendulumState{N}}
+mutable struct PendulumEnv{State,NAction} <: AbstractEnvironment
+    state::Union{Nothing,State}
 
     data::PendulumData
     opts::PendulumOpts
-    action_space::SVector{2,Int}
+    action_space::SVector{NAction,Int}
     # render stuff
     screen #::Union{Nothing,Vector{Observable{Vector{Point{2,Float32}}}}}
 end
 
-PendulumEnv{N}(data::PendulumData, opts::PendulumOpts=PendulumOpts()) where {N} =
-    PendulumEnv{N}(nothing, data, opts, (0, 1), nothing)
+PendulumEnv{State}(data::PendulumData, opts::PendulumOpts=PendulumOpts()) where {State<:PendulumState} =
+    PendulumEnv{State,2}(nothing, data, opts, (0, 1), nothing)
 
-pendulum_env_state_size(::PendulumEnv{N}) where {N} = N
-pendulum_env_state_size(::PendulumState{N}) where {N} = N
+pendulum_env_state_size(::PendulumEnv{<:PendulumState{NState}}) where {NState} = NState
+
 
 function is_state_terminated(state, pendulum_opts)
     x = state[1]
@@ -60,13 +63,13 @@ end
 
 mean(y) = sum(y) / length(y)
 
-function reward(env::PendulumEnv) 
+function reward(env::PendulumEnv)
     1.0 - env.opts.cart_displacement_penalty * abs(env.state.y[1]) / env.opts.x_threshold
 end
 
 function step!(env::PendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
-    force = pendulum_force(action, env.data)
+    force = pendulum_force(action, env)
     env.state.y = step(env.state.y, force, env.data)
     env.state.steps += 1
 
@@ -96,11 +99,12 @@ function step!(env::PendulumEnv, action::Int)
     return (env.state.y, _reward, terminated, nothing)
 end
 
-function pendulum_force(action::Int, p::PendulumData)
+function pendulum_force(action::Int, env::PendulumEnv)
+    force_magnitude = env.data.force_mag
     force = if action == 1
-        p.force_mag
+        force_magnitude
     else
-        -p.force_mag
+        -force_magnitude
     end
     return force
 end

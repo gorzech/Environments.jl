@@ -86,7 +86,7 @@ end
 # ```
 # No additional arguments are currently supported.
 
-InvertedPendulumEnv = PendulumEnv{4} # 4 is state size
+InvertedPendulumEnv = PendulumEnv{InvertedPendulumState} 
 
-PendulumEnv{4}() = PendulumEnv{4}(InvertedPendulumData())
-PendulumEnv{4}(opts::PendulumOpts) = PendulumEnv{4}(InvertedPendulumData(), opts)
+PendulumEnv{InvertedPendulumState}() = InvertedPendulumEnv(InvertedPendulumData())
+PendulumEnv{InvertedPendulumState}(opts::PendulumOpts) = InvertedPendulumEnv(InvertedPendulumData(), opts)
