@@ -66,7 +66,8 @@ end
 
 function step!(env::PendulumEnv, action::Int)
     @assert !isnothing(env.state) "Call reset before using step function."
-    env.state.y = step(env.state.y, action, env.data)
+    force = pendulum_force(action, env.data)
+    env.state.y = step(env.state.y, force, env.data)
     env.state.steps += 1
 
     terminated =
@@ -93,6 +94,15 @@ function step!(env::PendulumEnv, action::Int)
     end
 
     return (env.state.y, _reward, terminated, nothing)
+end
+
+function pendulum_force(action::Int, p::PendulumData)
+    force = if action == 1
+        p.force_mag
+    else
+        -p.force_mag
+    end
+    return force
 end
 
 function reset!(env::PendulumEnv, seed::Union{Nothing,Int}=nothing)

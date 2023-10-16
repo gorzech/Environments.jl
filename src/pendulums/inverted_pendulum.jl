@@ -14,13 +14,8 @@ InvertedPendulumData() = PendulumData(
     "euler",
 )
 
-function step(state::SVector{4,Float64}, action, p::PendulumData)
+function step(state::SVector{4,Float64}, force, p::PendulumData)
     x, x_dot, theta, theta_dot = state
-    force = if action == 1
-        p.force_mag
-    else
-        -p.force_mag
-    end
     sintheta, costheta = sincos(theta)
 
     # For the interested reader:

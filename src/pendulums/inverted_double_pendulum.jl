@@ -24,12 +24,7 @@ function integrate_sys_rk4(g, l, m, ml, tau, dt, state, force)
     return SVector{6}(yi)
 end
 
-function step(state::SVector{6,Float64}, action, p::PendulumData)
-    force = if action == 1
-        p.force_mag
-    else
-        -p.force_mag
-    end
+function step(state::SVector{6,Float64}, force, p::PendulumData)
     integrate_sys_rk4(
         p.gravity,
         2p.length,
