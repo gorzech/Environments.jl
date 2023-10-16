@@ -45,9 +45,14 @@ mutable struct PendulumEnv{State,NAction} <: AbstractEnvironment
 end
 
 PendulumEnv{State}(data::PendulumData, opts::PendulumOpts=PendulumOpts()) where {State<:PendulumState} =
-    PendulumEnv{State,2}(nothing, data, opts, (0, 1), nothing)
+    PendulumEnv{State,2}(nothing, data, opts, (-1, 1), nothing)
+
+PendulumEnv{State,3}(data::PendulumData, opts::PendulumOpts=PendulumOpts()) where {State<:PendulumState} =
+    PendulumEnv{State,3}(nothing, data, opts, (-1, 0, 1), nothing)
+
 
 pendulum_env_state_size(::PendulumEnv{<:PendulumState{NState}}) where {NState} = NState
+pendulum_env_state_size(::PendulumState{NState}) where {NState} = NState
 
 
 function is_state_terminated(state, pendulum_opts)
@@ -101,11 +106,7 @@ end
 
 function pendulum_force(action::Int, env::PendulumEnv)
     force_magnitude = env.data.force_mag
-    force = if action == 1
-        force_magnitude
-    else
-        -force_magnitude
-    end
+    force = action * force_magnitude
     return force
 end
 
